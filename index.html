@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Intelligence Feed · AI Speaker Tracker</title>
+<!-- EmailJS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Playfair+Display:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07090C;--surface:#0F1318;--raised:#161C23;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);
+  --accent:#E8FF47;--accent2:#B8CC30;
+  --cyan:#3DD9C5;--red:#FF5C5C;--amber:#FFAB3D;--blue:#5BA4FF;
+  --text:#D8E4F0;--text2:#7A8FA8;--text3:#3A4D61;
+  --mono:'IBM Plex Mono',monospace;
+  --sans:'IBM Plex Sans',sans-serif;
+  --serif:'Playfair Display',serif;
+  --nav:264px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex;min-height:100vh;overflow-x:hidden;}
+
+/* ── NAV ── */
+.nav{width:var(--nav);min-height:100vh;background:var(--surface);border-right:1px solid var(--border);position:fixed;top:0;left:0;display:flex;flex-direction:column;z-index:200;overflow-y:auto;}
+.nav::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),transparent);}
+.nav-top{padding:20px 18px 15px;border-bottom:1px solid var(--border);}
+.nav-brand{font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:.22em;text-transform:uppercase;margin-bottom:4px;}
+.nav-title{font-family:var(--serif);font-size:17px;color:var(--text);font-style:italic;line-height:1.2;}
+.nav-sub{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.13em;margin-top:3px;}
+
+/* config sections */
+.cfg-sec{padding:11px 15px;border-bottom:1px solid var(--border);}
+.cfg-sec.highlight{background:rgba(232,255,71,.02);}
+.fl{font-family:var(--mono);font-size:9px;color:var(--text2);letter-spacing:.14em;text-transform:uppercase;margin-bottom:5px;display:block;}
+.inp-wrap{position:relative;}
+.inp{width:100%;background:var(--raised);border:1px solid var(--border2);border-radius:3px;padding:6px 28px 6px 9px;font-family:var(--mono);font-size:10px;color:var(--text);outline:none;transition:border-color .15s;}
+.inp:focus{border-color:var(--accent);}
+.inp::placeholder{color:var(--text3);}
+.inp-eye{position:absolute;right:7px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:11px;color:var(--text3);}
+.hint{font-family:var(--mono);font-size:9px;margin-top:3px;letter-spacing:.07em;}
+.ok{color:var(--cyan);}
+.err{color:var(--red);}
+
+/* people */
+.ppl-list{display:flex;flex-direction:column;gap:3px;margin-bottom:6px;}
+.pchip{display:flex;align-items:center;gap:6px;padding:5px 7px;border-radius:3px;border:1px solid var(--border);background:var(--raised);cursor:pointer;transition:border-color .15s;}
+.pchip:hover{border-color:var(--border2);}
+.pchip.on{border-color:var(--accent);background:rgba(232,255,71,.04);}
+.pdot{width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.pdot.off{background:var(--text3);}
+.pname{font-size:12px;color:var(--text);flex:1;}
+.prm{font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;}
+.prm:hover{color:var(--red);}
+.add-row{display:flex;gap:5px;}
+.add-inp{flex:1;background:var(--raised);border:1px solid var(--border);border-radius:3px;padding:5px 8px;font-size:11px;color:var(--text);outline:none;}
+.add-inp:focus{border-color:var(--accent);}
+.add-inp::placeholder{color:var(--text3);}
+.bsm{background:var(--accent);color:var(--bg);border:none;border-radius:3px;padding:5px 10px;font-family:var(--mono);font-size:10px;font-weight:600;cursor:pointer;}
+.bsm:hover{background:var(--accent2);}
+
+/* nav links */
+.nav-links{flex:1;padding:5px 0;}
+.ngrp{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.2em;text-transform:uppercase;padding:9px 18px 3px;}
+.nitem{display:flex;align-items:center;gap:8px;padding:7px 18px;cursor:pointer;font-size:12px;color:var(--text2);border-left:2px solid transparent;transition:all .12s;}
+.nitem:hover{color:var(--text);background:rgba(255,255,255,.02);}
+.nitem.on{color:var(--accent);border-left-color:var(--accent);background:rgba(232,255,71,.04);}
+.nbadge{margin-left:auto;font-family:var(--mono);font-size:9px;background:var(--accent);color:var(--bg);padding:1px 5px;border-radius:2px;font-weight:600;}
+.nbadge.red{background:var(--red);color:#fff;}
+.nbadge.amb{background:var(--amber);color:var(--bg);}
+
+.nav-foot{padding:10px 15px;border-top:1px solid var(--border);}
+.foot-txt{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.09em;line-height:1.8;}
+.live{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--cyan);animation:blink 2s infinite;margin-right:4px;vertical-align:middle;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.25;}}
+
+/* ── MAIN ── */
+.main{margin-left:var(--nav);flex:1;display:flex;flex-direction:column;min-height:100vh;}
+.topbar{height:46px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:11px;position:sticky;top:0;z-index:100;}
+.tbtxt{font-family:var(--mono);font-size:10px;color:var(--text2);letter-spacing:.13em;text-transform:uppercase;}
+.tbtxt span{color:var(--accent);}
+.tbr{margin-left:auto;display:flex;align-items:center;gap:7px;}
+.btn{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 13px;border-radius:3px;cursor:pointer;border:none;transition:all .15s;}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2);}
+.btn-ghost:hover{color:var(--text);border-color:rgba(255,255,255,.2);}
+.btn-primary{background:var(--accent);color:var(--bg);font-weight:600;}
+.btn-primary:hover{background:var(--accent2);}
+.btn-primary:disabled{opacity:.45;cursor:not-allowed;}
+.btn-cyan{background:rgba(61,217,197,.14);color:var(--cyan);border:1px solid rgba(61,217,197,.22);}
+.btn-cyan:hover{background:rgba(61,217,197,.24);}
+
+.content{padding:20px 24px;flex:1;}
+.page{display:none;}
+.page.on{display:block;}
+
+/* section header */
+.sh{margin-bottom:16px;}
+.sh-eye{font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:.22em;text-transform:uppercase;margin-bottom:3px;}
+.sh-title{font-family:var(--serif);font-size:21px;color:var(--text);font-style:italic;}
+.sh-meta{font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:2px;letter-spacing:.09em;}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-bottom:13px;transition:border-color .2s;}
+.card:hover{border-color:var(--border2);}
+.ch{display:flex;align-items:center;gap:8px;padding:10px 15px;border-bottom:1px solid var(--border);}
+.cht{font-family:var(--mono);font-size:10px;color:var(--text2);letter-spacing:.13em;text-transform:uppercase;}
+.chr{margin-left:auto;display:flex;gap:6px;align-items:center;}
+.cbody{padding:14px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:13px;}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-bottom:13px;}
+
+/* fetch banner */
+.fbanner{background:linear-gradient(135deg,var(--surface),var(--raised));border:1px solid var(--border);border-radius:5px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:16px;}
+.fbi{flex:1;}
+.fbt{font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px;}
+.fbd{font-size:11px;color:var(--text2);line-height:1.6;}
+
+/* tag */
+.tag{font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;padding:2px 6px;border-radius:2px;font-weight:600;}
+.tv{background:rgba(91,164,255,.15);color:var(--blue);}
+.ta{background:rgba(255,171,61,.15);color:var(--amber);}
+.ti{background:rgba(61,217,197,.15);color:var(--cyan);}
+.tk{background:rgba(232,255,71,.15);color:var(--accent);}
+.tt{background:rgba(91,164,255,.1);color:var(--blue);}
+.tbull{background:rgba(61,217,197,.12);color:var(--cyan);}
+.tneut{background:rgba(122,143,168,.12);color:var(--text2);}
+.tbear{background:rgba(255,92,92,.12);color:var(--red);}
+
+/* speech */
+.sitem{padding:14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;}
+.sitem:last-child{border-bottom:none;}
+.sitem:hover{background:rgba(255,255,255,.015);}
+.smeta{display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;}
+.sdate{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.08em;}
+.ssrc{font-family:var(--mono);font-size:9px;color:var(--text2);}
+.stitle{font-size:13px;font-weight:500;color:var(--text);line-height:1.5;margin-bottom:5px;}
+.sexc{font-size:12px;color:var(--text2);line-height:1.7;}
+.squote{margin-top:8px;padding:8px 11px;border-left:2px solid var(--accent);background:rgba(232,255,71,.04);font-family:var(--serif);font-style:italic;font-size:12px;color:var(--text);line-height:1.6;border-radius:0 3px 3px 0;}
+
+/* loading */
+.lbox{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:12px;}
+.lring{width:30px;height:30px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.ltxt{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.13em;text-align:center;}
+.lsteps{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.08em;line-height:2;text-align:center;}
+.step.done{color:var(--cyan);}
+.step.curr{color:var(--accent);}
+
+/* insight */
+.irow{display:flex;gap:11px;padding:12px 15px;border-bottom:1px solid var(--border);}
+.irow:last-child{border-bottom:none;}
+.inum{font-family:var(--mono);font-size:24px;color:var(--border2);line-height:1;flex-shrink:0;width:24px;text-align:right;font-weight:600;}
+.ititle{font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px;line-height:1.4;}
+.itext{font-size:12px;color:var(--text2);line-height:1.7;}
+.srefs{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;}
+.sref{font-family:var(--mono);font-size:9px;color:var(--text3);border:1px solid var(--border);padding:1px 5px;border-radius:2px;}
+
+/* forecast */
+.fcitem{display:flex;gap:13px;padding:12px 15px;border-bottom:1px solid var(--border);}
+.fcitem:last-child{border-bottom:none;}
+.fcyr{font-family:var(--mono);font-size:28px;color:var(--accent);opacity:.5;line-height:1;flex-shrink:0;font-weight:600;width:48px;}
+.fclb{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.13em;text-transform:uppercase;margin-bottom:2px;}
+.fctit{font-family:var(--serif);font-size:14px;color:var(--text);font-style:italic;margin-bottom:4px;}
+.fctxt{font-size:12px;color:var(--text2);line-height:1.7;}
+.fcchips{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;}
+.chip{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:2px;letter-spacing:.04em;}
+.cbn{background:rgba(255,171,61,.1);color:var(--amber);border:1px solid rgba(255,171,61,.17);}
+.cop{background:rgba(61,217,197,.08);color:var(--cyan);border:1px solid rgba(61,217,197,.13);}
+
+/* stocks */
+.stbl{width:100%;border-collapse:collapse;font-size:12px;}
+.stbl th{font-family:var(--mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--text3);padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);background:var(--raised);}
+.stbl td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.stbl tr:last-child td{border-bottom:none;}
+.stbl tr:hover td{background:rgba(255,255,255,.01);}
+.tkr{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text);}
+.coname{font-size:10px;color:var(--text2);margin-top:1px;}
+.px{font-family:var(--mono);font-size:12px;font-weight:500;}
+.cup{font-family:var(--mono);font-size:11px;color:var(--cyan);font-weight:600;}
+.cdn{font-family:var(--mono);font-size:11px;color:var(--red);font-weight:600;}
+.cfl{font-family:var(--mono);font-size:11px;color:var(--text2);}
+.sig{display:flex;align-items:center;gap:5px;}
+.sdot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.sbuy{background:var(--cyan);box-shadow:0 0 6px var(--cyan);}
+.shold{background:var(--amber);box-shadow:0 0 6px var(--amber);}
+.swatch{background:var(--blue);box-shadow:0 0 6px var(--blue);}
+.slbl{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.06em;}
+.inds{display:flex;gap:3px;}
+.ind{font-family:var(--mono);font-size:9px;padding:1px 5px;border-radius:2px;}
+.ig{background:rgba(61,217,197,.1);color:var(--cyan);}
+.ia{background:rgba(255,171,61,.1);color:var(--amber);}
+.ir{background:rgba(255,92,92,.1);color:var(--red);}
+.rsiw{display:flex;align-items:center;gap:5px;}
+.rsib{width:52px;height:3px;background:var(--raised);border-radius:2px;}
+.rsif{height:100%;border-radius:2px;}
+.rsin{font-family:var(--mono);font-size:9px;color:var(--text2);width:20px;}
+.notec{font-size:11px;color:var(--text2);line-height:1.5;max-width:165px;}
+
+/* alerts */
+.alitem{display:flex;gap:10px;align-items:flex-start;padding:12px 15px;border-bottom:1px solid var(--border);}
+.alitem:last-child{border-bottom:none;}
+.prio{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;border-radius:2px;flex-shrink:0;margin-top:1px;}
+.ph{background:rgba(255,92,92,.13);color:var(--red);border:1px solid rgba(255,92,92,.2);}
+.pm{background:rgba(255,171,61,.1);color:var(--amber);border:1px solid rgba(255,171,61,.17);}
+.pl{background:rgba(91,164,255,.1);color:var(--blue);border:1px solid rgba(91,164,255,.14);}
+.altit{font-size:13px;font-weight:500;color:var(--text);margin-bottom:4px;}
+.albody{font-size:12px;color:var(--text2);line-height:1.6;}
+.alact{display:block;margin-top:4px;font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:.06em;}
+.alrisk{font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:2px;}
+
+/* email page */
+.ef{padding:14px;}
+.efl{font-family:var(--mono);font-size:9px;color:var(--text2);letter-spacing:.13em;text-transform:uppercase;margin-bottom:4px;display:block;}
+.efi{width:100%;background:var(--raised);border:1px solid var(--border2);border-radius:3px;padding:7px 10px;font-family:var(--sans);font-size:13px;color:var(--text);outline:none;transition:border-color .15s;margin-bottom:10px;}
+.efi:focus{border-color:var(--accent);}
+.efi::placeholder{color:var(--text3);}
+.efrow{display:flex;gap:6px;margin-bottom:10px;}
+.efrow .efi{margin-bottom:0;flex:1;}
+.sched{display:flex;align-items:center;gap:7px;padding:7px 11px;background:rgba(61,217,197,.05);border:1px solid rgba(61,217,197,.13);border-radius:3px;font-family:var(--mono);font-size:9px;color:var(--cyan);letter-spacing:.06em;margin-bottom:11px;}
+.sublist{display:flex;flex-direction:column;gap:3px;margin-top:7px;}
+.subrow{display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--raised);border-radius:3px;border:1px solid var(--border);font-size:12px;color:var(--text);}
+.subrm{margin-left:auto;background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;}
+.subrm:hover{color:var(--red);}
+.prevbox{background:var(--raised);border:1px solid var(--border);border-radius:3px;padding:13px;font-size:12px;color:var(--text2);line-height:1.8;max-height:300px;overflow-y:auto;white-space:pre-wrap;}
+.estatus{padding:7px 11px;border-radius:3px;font-family:var(--mono);font-size:10px;letter-spacing:.07em;margin-bottom:9px;}
+.eok{background:rgba(61,217,197,.08);color:var(--cyan);border:1px solid rgba(61,217,197,.14);}
+.eerr{background:rgba(255,92,92,.08);color:var(--red);border:1px solid rgba(255,92,92,.14);}
+.epend{background:rgba(122,143,168,.08);color:var(--text2);border:1px solid var(--border);}
+
+/* stat mini */
+.smini{padding:12px 14px;}
+.sml{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.13em;text-transform:uppercase;margin-bottom:4px;}
+.smv{font-family:var(--mono);font-size:24px;font-weight:600;line-height:1;margin-bottom:2px;}
+.smd{font-size:11px;color:var(--text2);line-height:1.4;}
+
+/* pills */
+.pills{display:flex;gap:5px;margin-bottom:12px;flex-wrap:wrap;}
+.pill{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;border-radius:20px;border:1px solid var(--border);color:var(--text2);cursor:pointer;transition:all .12s;}
+.pill:hover{color:var(--text);border-color:var(--border2);}
+.pill.on{background:var(--accent);color:var(--bg);border-color:var(--accent);}
+
+/* empty */
+.empty{text-align:center;padding:36px 18px;}
+.ei{font-size:26px;margin-bottom:9px;opacity:.32;}
+.et{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.13em;text-transform:uppercase;}
+.es{font-size:11px;color:var(--text3);margin-top:4px;line-height:1.6;}
+
+/* steps guide */
+.steps-guide{counter-reset:step;}
+.step-row{display:flex;gap:12px;padding:12px 15px;border-bottom:1px solid var(--border);align-items:flex-start;}
+.step-row:last-child{border-bottom:none;}
+.step-n{font-family:var(--mono);font-size:18px;color:var(--accent);opacity:.5;font-weight:600;flex-shrink:0;width:20px;line-height:1;}
+.step-body{}
+.step-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px;}
+.step-desc{font-size:12px;color:var(--text2);line-height:1.7;}
+.step-desc a{color:var(--blue);}
+.code-inline{font-family:var(--mono);font-size:10px;background:var(--raised);border:1px solid var(--border);padding:1px 5px;border-radius:2px;color:var(--cyan);}
+
+/* modal */
+.mbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(5px);z-index:500;align-items:center;justify-content:center;}
+.mbg.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:7px;width:640px;max-width:92vw;max-height:87vh;overflow-y:auto;padding:24px;position:relative;}
+.modal::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--cyan));border-radius:7px 7px 0 0;}
+.mx{position:absolute;top:10px;right:10px;background:var(--raised);border:1px solid var(--border);color:var(--text2);width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:3px;cursor:pointer;font-size:12px;}
+.mx:hover{color:var(--text);}
+.meye{font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:.17em;text-transform:uppercase;margin-bottom:6px;}
+.mtit{font-size:15px;font-weight:500;color:var(--text);line-height:1.5;margin-bottom:2px;}
+.mdate{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.08em;margin-bottom:13px;}
+.mbody{font-size:13px;color:var(--text2);line-height:1.8;}
+.msec{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.17em;text-transform:uppercase;margin:15px 0 8px;display:flex;align-items:center;gap:7px;}
+.msec::after{content:'';flex:1;height:1px;background:var(--border);}
+.mquote{padding:10px 13px;border-left:2px solid var(--accent);background:rgba(232,255,71,.04);font-family:var(--serif);font-style:italic;font-size:13px;color:var(--text);line-height:1.7;border-radius:0 3px 3px 0;margin:8px 0;}
+
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<!-- ══ NAV ══ -->
+<nav class="nav">
+  <div class="nav-top">
+    <div class="nav-brand">Intelligence Feed</div>
+    <div class="nav-title">Speaker Tracker</div>
+    <div class="nav-sub">AI-POWERED · GITHUB PAGES</div>
+  </div>
+
+  <!-- Anthropic Key -->
+  <div class="cfg-sec highlight">
+    <label class="fl">Anthropic API Key</label>
+    <div class="inp-wrap">
+      <input type="password" class="inp" id="ak" placeholder="sk-ant-..." oninput="setKey(this.value)">
+      <button class="inp-eye" onclick="toggleVis('ak')">👁</button>
+    </div>
+    <div class="hint" id="ak-hint"></div>
+  </div>
+
+  <!-- People -->
+  <div class="cfg-sec">
+    <div class="fl" style="margin-bottom:6px;">追踪人物</div>
+    <div class="ppl-list" id="ppl"></div>
+    <div class="add-row">
+      <input type="text" class="add-inp" id="padd" placeholder="输入姓名，回车添加"
+        onkeydown="if(event.key==='Enter')addPerson()">
+      <button class="bsm" onclick="addPerson()">+</button>
+    </div>
+  </div>
+
+  <!-- Nav -->
+  <div class="nav-links">
+    <div class="ngrp">内容</div>
+    <div class="nitem on" onclick="gp('speeches',this)"><span>📡</span>公开讲话原文<span class="nbadge" id="b-sp">0</span></div>
+    <div class="nitem" onclick="gp('summary',this)"><span>🧠</span>核心观点总结</div>
+    <div class="ngrp">产业研判</div>
+    <div class="nitem" onclick="gp('forecast',this)"><span>🔭</span>5–10年产业预测<span class="nbadge amb">AI</span></div>
+    <div class="ngrp">投资信号</div>
+    <div class="nitem" onclick="gp('stocks',this)"><span>📈</span>股票追踪</div>
+    <div class="nitem" onclick="gp('alerts',this)"><span>⚡</span>交易提醒<span class="nbadge red" id="b-al">!</span></div>
+    <div class="ngrp">订阅推送</div>
+    <div class="nitem" onclick="gp('email',this)"><span>📧</span>邮件订阅设置</div>
+    <div class="nitem" onclick="gp('setup',this)"><span>📖</span>EmailJS 配置指南</div>
+  </div>
+
+  <div class="nav-foot">
+    <div class="foot-txt"><span class="live"></span><span id="fu">AWAITING FETCH</span></div>
+    <div class="foot-txt" style="margin-top:2px;">每周一 07:00 自动触发</div>
+  </div>
+</nav>
+
+<!-- ══ MAIN ══ -->
+<div class="main">
+  <div class="topbar">
+    <div class="tbtxt" id="tbtxt"><span>▸</span> 公开讲话原文</div>
+    <div class="tbr">
+      <button class="btn btn-ghost" onclick="gp('email',null)">📧 邮件设置</button>
+      <button class="btn btn-primary" id="fbtn" onclick="startFetch()">↺ 立即抓取分析</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- SPEECHES -->
+    <div class="page on" id="page-speeches">
+      <div class="fbanner">
+        <div class="fbi">
+          <div class="fbt">每周一自动抓取 · 仅收录本人直接发言内容</div>
+          <div class="fbd">通过 Claude web_search 搜索过去7天内追踪人物的讲话、访谈、演讲视频及文章。<br>仅保留本人直接发言，排除转述和二手报道。历史内容累积保存。</div>
+        </div>
+        <button class="btn btn-primary" onclick="startFetch()">↺ 立即抓取</button>
+      </div>
+      <div class="pills" id="sp-pills">
+        <span class="pill on" onclick="fpSp(this,'all')">全部</span>
+        <span class="pill" onclick="fpSp(this,'video')">视频</span>
+        <span class="pill" onclick="fpSp(this,'article')">文章</span>
+        <span class="pill" onclick="fpSp(this,'interview')">访谈</span>
+        <span class="pill" onclick="fpSp(this,'keynote')">演讲</span>
+      </div>
+      <div class="card" id="sp-card">
+        <div class="empty"><div class="ei">📡</div><div class="et">尚未抓取</div><div class="es">填写 API Key 后点击「立即抓取分析」</div></div>
+      </div>
+    </div>
+
+    <!-- SUMMARY -->
+    <div class="page" id="page-summary">
+      <div class="sh"><div class="sh-eye">Weekly Summary</div><div class="sh-title">本周核心观点总结</div><div class="sh-meta" id="sum-meta">尚未生成</div></div>
+      <div class="g3" id="sum-stats"></div>
+      <div class="card"><div class="ch"><div class="cht">🧠 AI提炼核心洞察</div></div><div id="sum-ins"><div class="empty"><div class="ei">🧠</div><div class="et">抓取后自动生成</div></div></div></div>
+      <div class="card"><div class="ch"><div class="cht">💬 本周金句精选</div></div><div id="sum-quotes" style="padding:10px 14px;"><div class="empty" style="padding:14px;"><div class="et">抓取后自动生成</div></div></div></div>
+    </div>
+
+    <!-- FORECAST -->
+    <div class="page" id="page-forecast">
+      <div class="sh"><div class="sh-eye">Industrial Forecast · Cumulative</div><div class="sh-title">5–10年产业爆发预判</div><div class="sh-meta">累积历史讲话 · 持续更新</div></div>
+      <div class="card">
+        <div class="ch"><div class="cht">⚠ 产能瓶颈识别</div><div class="chr"><span class="tag ti">累积分析</span></div></div>
+        <div id="bn-body"><div class="empty"><div class="ei">⚠️</div><div class="et">首次抓取后自动生成</div></div></div>
+      </div>
+      <div class="card">
+        <div class="ch"><div class="cht">🔭 爆发产业时间轴</div></div>
+        <div id="fc-body"><div class="empty"><div class="ei">🔭</div><div class="et">首次抓取后自动生成</div></div></div>
+      </div>
+    </div>
+
+    <!-- STOCKS -->
+    <div class="page" id="page-stocks">
+      <div class="sh"><div class="sh-eye">Market Tracker · US Equities</div><div class="sh-title">英伟达产业链股票</div><div class="sh-meta">示例数据 · 技术指标仅供参考</div></div>
+      <div class="pills">
+        <span class="pill on" onclick="fpSt(this,'all')">全部</span>
+        <span class="pill" onclick="fpSt(this,'core')">核心</span>
+        <span class="pill" onclick="fpSt(this,'supply')">供应链</span>
+        <span class="pill" onclick="fpSt(this,'competitor')">竞争对手</span>
+      </div>
+      <div class="card"><table class="stbl"><thead><tr><th>代码</th><th>价格</th><th>周涨跌</th><th>信号</th><th>技术</th><th>RSI</th><th>备注</th></tr></thead><tbody id="st-body"></tbody></table></div>
+    </div>
+
+    <!-- ALERTS -->
+    <div class="page" id="page-alerts">
+      <div class="sh"><div class="sh-eye">Trade Alerts</div><div class="sh-title">最重要交易提醒</div><div class="sh-meta">⚠ 仅供参考，不构成投资建议</div></div>
+      <div class="card" id="al-card"><div class="empty"><div class="ei">⚡</div><div class="et">抓取后自动生成</div></div></div>
+      <div class="card"><div class="cbody" style="font-family:var(--mono);font-size:10px;color:var(--text3);line-height:1.8;letter-spacing:.04em;">免责声明：所有内容基于公开信息和AI分析，不构成投资建议。股票交易存在风险，请结合个人情况独立决策。</div></div>
+    </div>
+
+    <!-- EMAIL -->
+    <div class="page" id="page-email">
+      <div class="sh"><div class="sh-eye">Daily Email · EmailJS + QQ Mail</div><div class="sh-title">每日邮件推送设置</div><div class="sh-meta">每天早上 07:00 自动发送 · 网页需保持打开</div></div>
+      <div class="g2">
+        <!-- EmailJS config -->
+        <div class="card">
+          <div class="ch"><div class="cht">⚙ EmailJS 配置</div><div class="chr"><span class="tag ti" style="cursor:pointer;" onclick="gp('setup',null)">配置指南 →</span></div></div>
+          <div class="ef">
+            <div id="ejs-status" class="estatus epend">尚未配置 EmailJS</div>
+            <label class="efl">Service ID</label>
+            <input class="efi" id="ejs-sid" placeholder="service_xxxxxxx" oninput="saveEjsConfig()">
+            <label class="efl">Template ID</label>
+            <input class="efi" id="ejs-tid" placeholder="template_xxxxxxx" oninput="saveEjsConfig()">
+            <label class="efl">Public Key</label>
+            <input class="efi" id="ejs-pk" placeholder="xxxxxxxxxxxxxxx" oninput="saveEjsConfig()">
+            <button class="btn btn-cyan" onclick="testEmailJS()" style="width:100%;">🔌 测试发送</button>
+          </div>
+        </div>
+        <!-- Subscribers -->
+        <div class="card">
+          <div class="ch"><div class="cht">📧 订阅管理</div></div>
+          <div class="ef">
+            <div class="sched"><span>⏰</span> 每天 07:00 · 过去24小时讲话提炼</div>
+            <label class="efl">添加订阅邮箱</label>
+            <div class="efrow">
+              <input type="email" class="efi" id="sub-inp" placeholder="someone@example.com" onkeydown="if(event.key==='Enter')addSub()">
+              <button class="bsm" onclick="addSub()">添加</button>
+            </div>
+            <div class="efl">当前订阅列表</div>
+            <div class="sublist" id="sub-list"><div style="font-family:var(--mono);font-size:10px;color:var(--text3);">暂无订阅者</div></div>
+          </div>
+        </div>
+      </div>
+      <!-- Generate & Send -->
+      <div class="card">
+        <div class="ch">
+          <div class="cht">📤 立即生成并发送今日摘要</div>
+          <div class="chr">
+            <button class="btn btn-ghost" onclick="copyPreview()">复制内容</button>
+            <button class="btn btn-primary" id="send-btn" onclick="genAndSend()">生成 + 发送</button>
+          </div>
+        </div>
+        <div class="cbody">
+          <div id="prev-wrap" style="display:none;"><div class="prevbox" id="prev-content"></div></div>
+          <div id="prev-ph" class="empty" style="padding:18px;"><div class="ei">📩</div><div class="et">点击「生成 + 发送」</div><div class="es">AI 根据最新抓取内容生成邮件<br>通过 EmailJS 发送至所有订阅者</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETUP GUIDE -->
+    <div class="page" id="page-setup">
+      <div class="sh"><div class="sh-eye">Setup Guide</div><div class="sh-title">EmailJS 配置指南</div><div class="sh-meta">免费版每月 200 封 · 5分钟完成配置</div></div>
+      <div class="card">
+        <div class="ch"><div class="cht">📋 配置步骤（共4步）</div></div>
+        <div class="steps-guide">
+          <div class="step-row">
+            <div class="step-n">1</div>
+            <div class="step-body">
+              <div class="step-title">注册 EmailJS 免费账号</div>
+              <div class="step-desc">打开 <a href="https://www.emailjs.com" target="_blank">emailjs.com</a>，点击 Sign Up 注册免费账号（每月200封免费）</div>
+            </div>
+          </div>
+          <div class="step-row">
+            <div class="step-n">2</div>
+            <div class="step-body">
+              <div class="step-title">添加 QQ 邮箱 Email Service</div>
+              <div class="step-desc">
+                登录后 → Email Services → Add New Service → 选择 <span class="code-inline">QQ Mail</span><br>
+                填入你的 QQ 邮箱和授权码（授权码获取：QQ邮箱设置 → 账户 → 开启SMTP服务）<br>
+                点击 Connect Account，记下生成的 <span class="code-inline">Service ID</span>（格式：service_xxxxxxx）
+              </div>
+            </div>
+          </div>
+          <div class="step-row">
+            <div class="step-n">3</div>
+            <div class="step-body">
+              <div class="step-title">创建邮件模板 Email Template</div>
+              <div class="step-desc">
+                Email Templates → Create New Template<br>
+                Subject 填：<span class="code-inline">{{subject}}</span><br>
+                Content 填：<span class="code-inline">{{message}}</span><br>
+                To Email 填：<span class="code-inline">{{to_email}}</span><br>
+                保存后记下 <span class="code-inline">Template ID</span>（格式：template_xxxxxxx）
+              </div>
+            </div>
+          </div>
+          <div class="step-row">
+            <div class="step-n">4</div>
+            <div class="step-body">
+              <div class="step-title">获取 Public Key 并填入本页面</div>
+              <div class="step-desc">
+                Account → API Keys → 复制 <span class="code-inline">Public Key</span><br>
+                回到「邮件订阅设置」页面，填入 Service ID、Template ID、Public Key，点击「测试发送」验证
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch"><div class="cht">⏰ 关于定时发送</div></div>
+        <div class="cbody" style="font-size:12px;color:var(--text2);line-height:1.9;">
+          本工具运行在浏览器中，<strong style="color:var(--text);">网页需要保持打开</strong>才能触发定时任务。<br>
+          建议在电脑上保持浏览器标签页开着，每天早上 07:00 会自动生成并发送邮件。<br><br>
+          <span style="color:var(--text3);">如需真正的后台定时发送（无需开着网页），可将此工具部署到有后端的平台如 Railway 或 Render，告诉我你需要这个功能即可。</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- content -->
+</div><!-- main -->
+
+<!-- MODAL -->
+<div class="mbg" id="mbg" onclick="if(event.target===this)closeM()">
+  <div class="modal"><button class="mx" onclick="closeM()">✕</button><div id="minner"></div></div>
+</div>
+
+<script>
+// ════════════════════════
+// STATE
+// ════════════════════════
+let S = {
+  apiKey:'', people:['黄仁勋 Jensen Huang'], active:'黄仁勋 Jensen Huang',
+  speeches:[], summary:null, forecast:null, alerts:[],
+  cumCtx:'', lastFetch:null, spFilter:'all', stFilter:'all',
+  subscribers:[], ejsSid:'', ejsTid:'', ejsPk:''
+};
+
+function load() {
+  try {
+    const d = localStorage.getItem('ift2'); if(d) Object.assign(S, JSON.parse(d));
+    const k = localStorage.getItem('ift2_k'); if(k){ S.apiKey=k; document.getElementById('ak').value=k; setKeyHint(k); }
+    // restore emailjs fields
+    if(S.ejsSid) document.getElementById('ejs-sid').value=S.ejsSid;
+    if(S.ejsTid) document.getElementById('ejs-tid').value=S.ejsTid;
+    if(S.ejsPk)  document.getElementById('ejs-pk').value=S.ejsPk;
+    if(S.ejsSid && S.ejsTid && S.ejsPk) setEjsStatus(true);
+  } catch(e){}
+}
+
+function save() {
+  try {
+    const d={...S}; delete d.apiKey;
+    localStorage.setItem('ift2', JSON.stringify(d));
+    if(S.apiKey) localStorage.setItem('ift2_k', S.apiKey);
+  } catch(e){}
+}
+
+// ════════════════════════
+// API KEY
+// ════════════════════════
+function setKey(v){ S.apiKey=v.trim(); setKeyHint(v.trim()); save(); }
+function setKeyHint(v){
+  const el=document.getElementById('ak-hint');
+  if(!v){el.textContent='';return;}
+  if(v.startsWith('sk-ant-')&&v.length>20){el.textContent='✓ 格式正确';el.className='hint ok';}
+  else{el.textContent='⚠ 格式可能有误';el.className='hint err';}
+}
+function toggleVis(id){ const i=document.getElementById(id); i.type=i.type==='password'?'text':'password'; }
+
+// ════════════════════════
+// PEOPLE
+// ════════════════════════
+function renderPpl(){
+  document.getElementById('ppl').innerHTML=S.people.map(p=>`
+    <div class="pchip ${p===S.active?'on':''}" onclick="setAct('${p}')">
+      <div class="pdot ${p===S.active?'':'off'}"></div>
+      <span class="pname">${p}</span>
+      <button class="prm" onclick="event.stopPropagation();rmP('${p}')">✕</button>
+    </div>`).join('');
+}
+function addPerson(){
+  const inp=document.getElementById('padd'), n=inp.value.trim();
+  if(!n||S.people.includes(n)){inp.value='';return;}
+  S.people.push(n); inp.value=''; renderPpl(); save();
+}
+function rmP(n){ S.people=S.people.filter(p=>p!==n); if(S.active===n)S.active=S.people[0]||''; renderPpl(); save(); }
+function setAct(n){ S.active=n; renderPpl(); renderSp(); }
+
+// ════════════════════════
+// CLAUDE API
+// ════════════════════════
+async function claude(sys, usr, search=true){
+  if(!S.apiKey) throw new Error('请先填写 Anthropic API Key');
+  const body={model:'claude-sonnet-4-20250514',max_tokens:4000,system:sys,messages:[{role:'user',content:usr}]};
+  if(search) body.tools=[{type:'web_search_20250305',name:'web_search'}];
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});
+  if(!r.ok){const e=await r.json().catch(()=>({})); throw new Error(e.error?.message||`HTTP ${r.status}`);}
+  const d=await r.json();
+  return (d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+}
+
+function parseJ(txt){
+  const c=txt.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+  const i=Math.min(c.indexOf('{')>=0?c.indexOf('{'):Infinity,c.indexOf('[')>=0?c.indexOf('['):Infinity);
+  if(i===Infinity) throw new Error('No JSON');
+  return JSON.parse(c.slice(i));
+}
+
+// ════════════════════════
+// FETCH
+// ════════════════════════
+async function startFetch(){
+  if(!S.apiKey){alert('请先填写 Anthropic API Key');return;}
+  if(!S.active){alert('请先选择追踪人物');return;}
+  const btn=document.getElementById('fbtn');
+  btn.disabled=true; btn.textContent='⟳ 抓取中…';
+  gp('speeches',document.querySelector('.nitem'));
+  setLoader('sp-card',['搜索过去7天公开讲话…','筛选本人直接发言…','提取金句与核心观点…','生成产业分析与交易提醒…']);
+  try{
+    await step1(); await step2(); await step3(); await step4();
+    S.lastFetch=new Date().toISOString();
+    document.getElementById('fu').textContent='UPDATED '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+    save();
+  }catch(e){
+    document.getElementById('sp-card').innerHTML=`<div class="empty"><div class="ei">⚠️</div><div class="et">抓取失败</div><div class="es" style="color:var(--red);">${e.message}</div></div>`;
+  }finally{ btn.disabled=false; btn.textContent='↺ 立即抓取分析'; }
+}
+
+function setLoader(id, steps){
+  document.getElementById(id).innerHTML=`<div class="lbox"><div class="lring"></div><div class="ltxt">AI SEARCHING & ANALYZING</div><div class="lsteps">${steps.map((s,i)=>`<div class="step ${i===0?'curr':''}" id="st${i}">${i===0?'▸ ':' '}${s}</div>`).join('')}</div></div>`;
+}
+
+async function step1(){
+  const p=S.active, today=new Date(), ago=new Date(today-7*864e5);
+  const range=`${ago.toISOString().slice(0,10)} to ${today.toISOString().slice(0,10)}`;
+  const raw=await claude(
+    `You are an intelligence analyst. Find ONLY content where ${p} personally spoke or wrote. Return ONLY valid JSON array.`,
+    `Search for all public speeches, interviews, keynotes, videos, tweets, articles where ${p} personally spoke or wrote during past 7 days (${range}). Only include items where ${p} is directly speaking — NOT articles about them.
+Return JSON array, each item: {"id":"uid","person":"${p}","type":"video|article|interview|keynote|tweet","date":"YYYY-MM-DD","source":"platform","title":"title","excerpt":"2-3 sentence Chinese summary","quote":"key direct quote","link":"url or empty","signal":"bullish|neutral|bearish","key_topics":["t1"],"fullText":"Chinese detailed summary 200 chars","analysis":"Chinese investment implications 100 chars"}
+Return [] if nothing found.`, true);
+  let items=[];
+  try{ items=parseJ(raw); if(!Array.isArray(items)) items=items.speeches||items.results||[]; }catch(e){}
+  const ids=new Set(S.speeches.map(s=>s.id));
+  const fresh=items.filter(i=>i&&i.title&&!ids.has(i.id));
+  S.speeches=[...fresh,...S.speeches].slice(0,60);
+  if(fresh.length){
+    const ctx=fresh.map(i=>`[${i.date}] ${i.source}: ${i.fullText||i.excerpt}`).join('\n\n');
+    S.cumCtx=(S.cumCtx+'\n\n---\n\n'+ctx).slice(-20000);
+  }
+  document.getElementById('b-sp').textContent=S.speeches.length;
+  renderSp();
+}
+
+async function step2(){
+  if(!S.speeches.length) return;
+  const ctx=S.speeches.slice(0,10).map(s=>`[${s.date}] ${s.source}\n标题: ${s.title}\n摘要: ${s.excerpt}\n金句: ${s.quote}`).join('\n\n---\n\n');
+  const raw=await claude('你是战略分析师，基于讲话提炼核心洞察。仅回复JSON。',
+    `基于${S.active}本周讲话，返回JSON：{"stats":{"total":数字,"new_signals":数字,"tone":"基调","top_themes":["主题"]},"insights":[{"num":"01","title":"标题","text":"150字","sources":["来源"]}],"quotes":[{"text":"金句","source":"来源"}]}\n讲话内容：\n${ctx}`,false);
+  try{S.summary=parseJ(raw);}catch(e){S.summary={stats:{total:S.speeches.length,tone:'分析中',top_themes:[]},insights:[],quotes:[]};}
+  renderSum();
+}
+
+async function step3(){
+  const ctx=S.cumCtx.slice(-8000)||S.speeches.map(s=>`${s.date}: ${s.fullText||s.excerpt}`).join('\n\n');
+  const raw=await claude('你是产业链首席分析师，从领袖讲话识别瓶颈和爆发点。仅回复JSON。',
+    `基于${S.active}历史讲话，返回JSON：{"bottlenecks":[{"icon":"emoji","title":"瓶颈","severity":"critical|high|medium","description":"100字","related_tickers":"NVDA"}],"timeline":[{"year":"2026","label":"近期","title":"产业","description":"120字","bottleneck":"瓶颈","opportunity":"机会+代码","evidence":"依据"}]}\n讲话：\n${ctx}`,false);
+  try{S.forecast=parseJ(raw);}catch(e){S.forecast={bottlenecks:[],timeline:[]};}
+  renderFc();
+}
+
+async function step4(){
+  const ctx=S.speeches.slice(0,8).map(s=>`${s.title}: ${s.excerpt} (${s.signal})`).join('\n');
+  const raw=await claude('你是美股科技股分析师，生成交易信号。仅回复JSON。',
+    `基于讲话生成交易提醒：{"alerts":[{"priority":"high|mid|low","title":"标题","body":"100字","action":"操作","risk":"风险","tickers":["NVDA"]}]}\n${ctx}`,false);
+  try{const p=parseJ(raw);S.alerts=p.alerts||p||[];}catch(e){S.alerts=[];}
+  document.getElementById('b-al').textContent=S.alerts.length||'!';
+  renderAl();
+}
+
+// ════════════════════════
+// RENDER
+// ════════════════════════
+const TMAP={'video':'tv','article':'ta','interview':'ti','keynote':'tk','tweet':'tt'};
+
+function renderSp(){
+  let data=S.speeches.filter(s=>!S.active||(s.person===S.active));
+  if(S.spFilter!=='all') data=data.filter(s=>s.type===S.spFilter);
+  const el=document.getElementById('sp-card');
+  if(!data.length){el.innerHTML=`<div class="empty"><div class="ei">📡</div><div class="et">${S.speeches.length?'无匹配':'尚未抓取'}</div></div>`;return;}
+  el.innerHTML=data.map(s=>`
+    <div class="sitem" onclick="openSp('${s.id}')">
+      <div class="smeta">
+        <span class="tag ${TMAP[s.type]||'ta'}">${(s.type||'').toUpperCase()}</span>
+        <span class="sdate">${s.date||''}</span><span class="ssrc">${s.source||''}</span>
+        ${s.signal?`<span class="tag t${s.signal==='bullish'?'bull':s.signal==='bearish'?'bear':'neut'}" style="margin-left:auto;">${s.signal.toUpperCase()}</span>`:''}
+      </div>
+      <div class="stitle">${s.title||''}</div>
+      <div class="sexc">${s.excerpt||''}</div>
+      ${s.quote?`<div class="squote">${s.quote}</div>`:''}
+      ${s.link?`<a href="${s.link}" target="_blank" onclick="event.stopPropagation()" style="display:inline-block;margin-top:6px;font-family:var(--mono);font-size:9px;color:var(--blue);">↗ 原文链接</a>`:''}
+    </div>`).join('');
+}
+
+function renderSum(){
+  if(!S.summary) return;
+  const st=S.summary.stats||{};
+  document.getElementById('sum-meta').textContent=new Date().toLocaleDateString('zh-CN')+' 自动生成';
+  document.getElementById('sum-stats').innerHTML=`
+    <div class="card"><div class="smini"><div class="sml">本周发言</div><div class="smv" style="color:var(--accent)">${st.total||0}</div><div class="smd">${(st.top_themes||[]).join(' · ')}</div></div></div>
+    <div class="card"><div class="smini"><div class="sml">新增信号</div><div class="smv" style="color:var(--cyan)">${st.new_signals||0}</div></div></div>
+    <div class="card"><div class="smini"><div class="sml">整体基调</div><div class="smv" style="color:var(--amber);font-size:16px;margin-top:4px;">${st.tone||'—'}</div></div></div>`;
+  const ins=S.summary.insights||[];
+  document.getElementById('sum-ins').innerHTML=ins.length
+    ?ins.map(i=>`<div class="irow"><div class="inum">${i.num||'—'}</div><div><div class="ititle">${i.title}</div><div class="itext">${i.text}</div>${(i.sources||[]).length?`<div class="srefs">${i.sources.map(s=>`<span class="sref">${s}</span>`).join('')}</div>`:''}</div></div>`).join('')
+    :'<div class="empty"><div class="et">无洞察</div></div>';
+  const qs=S.summary.quotes||[];
+  document.getElementById('sum-quotes').innerHTML=qs.length
+    ?qs.map(q=>`<div class="squote" style="margin-bottom:8px;font-size:13px;">${q.text}<div style="margin-top:3px;font-family:var(--mono);font-size:9px;color:var(--text3);font-style:normal;">— ${q.source}</div></div>`).join('')
+    :'<div class="empty" style="padding:12px;"><div class="et">无金句</div></div>';
+}
+
+function renderFc(){
+  if(!S.forecast) return;
+  const bn=S.forecast.bottlenecks||[];
+  document.getElementById('bn-body').innerHTML=bn.length
+    ?bn.map(b=>`<div style="display:flex;gap:10px;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--border);"><span style="font-size:17px;flex-shrink:0;">${b.icon||'⚠'}</span><div><div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;"><span style="font-size:13px;font-weight:500;color:var(--text);">${b.title}</span><span class="tag ${b.severity==='critical'?'tbear':b.severity==='high'?'ta':'tneut'}">${(b.severity||'').toUpperCase()}</span></div><div style="font-size:12px;color:var(--text2);line-height:1.7;">${b.description}</div>${b.related_tickers?`<div style="margin-top:3px;font-family:var(--mono);font-size:9px;color:var(--cyan);">▸ ${b.related_tickers}</div>`:''}</div></div>`).join('')
+    :'<div class="empty"><div class="et">无数据</div></div>';
+  const tl=S.forecast.timeline||[];
+  document.getElementById('fc-body').innerHTML=tl.length
+    ?tl.map(f=>`<div class="fcitem"><div class="fcyr">${f.year}</div><div><div class="fclb">${f.label||''}</div><div class="fctit">${f.title}</div><div class="fctxt">${f.description}</div>${f.evidence?`<div style="margin-top:4px;font-family:var(--mono);font-size:9px;color:var(--text3);">依据: ${f.evidence}</div>`:''}<div class="fcchips">${f.bottleneck?`<span class="chip cbn">⚠ ${f.bottleneck}</span>`:''} ${f.opportunity?`<span class="chip cop">▸ ${f.opportunity}</span>`:''}</div></div></div>`).join('')
+    :'<div class="empty"><div class="et">无数据</div></div>';
+}
+
+const STOCKS=[
+  {t:'NVDA',n:'NVIDIA Corp',c:'core',p:1089.42,w:8.3,s:'buy',rsi:68,ma:'g',mc:'g',vo:'g',nt:'Blackwell出货预期强化，突破前高'},
+  {t:'TSM', n:'TSMC',c:'supply',p:198.75,w:4.1,s:'buy',rsi:62,ma:'g',mc:'g',vo:'a',nt:'CoWoS扩产，AI订单能见度高'},
+  {t:'AVGO',n:'Broadcom',c:'supply',p:1612.3,w:5.7,s:'buy',rsi:71,ma:'g',mc:'g',vo:'g',nt:'定制AI芯片+光互联，RSI偏高注意回调'},
+  {t:'MU',  n:'Micron',c:'supply',p:142.18,w:6.2,s:'buy',rsi:59,ma:'g',mc:'a',vo:'g',nt:'HBM4进量产，AI存储需求受益'},
+  {t:'VRT', n:'Vertiv',c:'supply',p:87.43,w:3.8,s:'buy',rsi:55,ma:'g',mc:'g',vo:'a',nt:'液冷基础设施最直接受益'},
+  {t:'MSFT',n:'Microsoft',c:'core',p:452.67,w:2.1,s:'hold',rsi:52,ma:'g',mc:'a',vo:'a',nt:'Azure AI增长，估值已充分定价'},
+  {t:'AMD', n:'AMD',c:'competitor',p:178.92,w:-1.4,s:'watch',rsi:44,ma:'a',mc:'r',vo:'a',nt:'MI300X有进展但系统差距仍大'},
+  {t:'MRVL',n:'Marvell',c:'supply',p:82.17,w:7.4,s:'buy',rsi:65,ma:'g',mc:'g',vo:'g',nt:'定制AI芯片+光互联双驱动'},
+  {t:'COHR',n:'Coherent',c:'supply',p:98.34,w:9.1,s:'buy',rsi:72,ma:'g',mc:'g',vo:'g',nt:'光模块爆炸，RSI72超买注意节奏'},
+  {t:'INTC',n:'Intel',c:'competitor',p:28.45,w:-3.2,s:'hold',rsi:38,ma:'r',mc:'r',vo:'a',nt:'基本面承压，观望为主'},
+];
+function renderSt(f){
+  const data=f==='all'?STOCKS:STOCKS.filter(s=>s.c===f);
+  const rc=v=>v>=70?'var(--red)':v>=60?'var(--amber)':v<=40?'var(--blue)':'var(--cyan)';
+  const sm={buy:'sbuy',hold:'shold',watch:'swatch'};
+  const im={g:'ig',a:'ia',r:'ir'};
+  document.getElementById('st-body').innerHTML=data.map(s=>`
+    <tr>
+      <td><div class="tkr">${s.t}</div><div class="coname">${s.n}</div></td>
+      <td><div class="px">$${s.p.toFixed(2)}</div></td>
+      <td><div class="${s.w>0?'cup':s.w<0?'cdn':'cfl'}">${s.w>0?'+':''}${s.w}%</div></td>
+      <td><div class="sig"><div class="sdot ${sm[s.s]||'shold'}"></div><span class="slbl ${s.s==='buy'?'cup':s.s==='sell'?'cdn':'cfl'}">${s.s.toUpperCase()}</span></div></td>
+      <td><div class="inds"><span class="ind ${im[s.ma]}">MA</span><span class="ind ${im[s.mc]}">MACD</span><span class="ind ${im[s.vo]}">VOL</span></div></td>
+      <td><div class="rsiw"><div class="rsib"><div class="rsif" style="width:${s.rsi}%;background:${rc(s.rsi)};"></div></div><span class="rsin">${s.rsi}</span></div></td>
+      <td><div class="notec">${s.nt}</div></td>
+    </tr>`).join('');
+}
+
+function renderAl(){
+  const pm={high:'ph',mid:'pm',low:'pl'},pl={high:'高优',mid:'中优',low:'关注'};
+  document.getElementById('al-card').innerHTML=S.alerts.length
+    ?S.alerts.map(a=>`<div class="alitem"><span class="prio ${pm[a.priority]||'pl'}">${pl[a.priority]||'关注'}</span><div><div class="altit">${a.title}</div><div class="albody">${a.body}</div><span class="alact">▸ ${a.action}</span><div class="alrisk">⚠ ${a.risk}</div>${(a.tickers||[]).length?`<div style="margin-top:4px;display:flex;gap:4px;">${a.tickers.map(t=>`<span class="tag tbull">${t}</span>`).join('')}</div>`:''}</div></div>`).join('')
+    :'<div class="empty"><div class="ei">⚡</div><div class="et">抓取后自动生成</div></div>';
+}
+
+// ════════════════════════
+// EMAILJS
+// ════════════════════════
+function saveEjsConfig(){
+  S.ejsSid=document.getElementById('ejs-sid').value.trim();
+  S.ejsTid=document.getElementById('ejs-tid').value.trim();
+  S.ejsPk =document.getElementById('ejs-pk').value.trim();
+  if(S.ejsSid&&S.ejsTid&&S.ejsPk) setEjsStatus(true);
+  save();
+}
+
+function setEjsStatus(ok, msg){
+  const el=document.getElementById('ejs-status');
+  if(ok){ el.textContent='✓ '+(msg||'EmailJS 已配置'); el.className='estatus eok'; }
+  else  { el.textContent='✗ '+(msg||'配置有误'); el.className='estatus eerr'; }
+}
+
+async function testEmailJS(){
+  if(!S.ejsSid||!S.ejsTid||!S.ejsPk){ alert('请先填写 Service ID、Template ID 和 Public Key'); return; }
+  if(!S.subscribers.length){ alert('请先添加至少一个订阅邮箱'); return; }
+  const btn=event.target; btn.disabled=true; btn.textContent='测试中…';
+  try{
+    emailjs.init(S.ejsPk);
+    await emailjs.send(S.ejsSid, S.ejsTid, {
+      to_email: S.subscribers[0],
+      subject: '[Intelligence Feed] 测试邮件',
+      message: '✓ EmailJS 配置成功！Intelligence Feed 每日邮件推送已激活。'
+    });
+    setEjsStatus(true, '测试发送成功 ✓');
+    alert(`✓ 测试邮件已发送至 ${S.subscribers[0]}`);
+  }catch(e){
+    setEjsStatus(false, e.text||e.message||'发送失败');
+    alert('发送失败: '+(e.text||e.message));
+  }finally{ btn.disabled=false; btn.textContent='🔌 测试发送'; }
+}
+
+function addSub(){
+  const inp=document.getElementById('sub-inp'), email=inp.value.trim();
+  if(!email||!email.includes('@')){ alert('请输入有效邮箱'); return; }
+  if(S.subscribers.includes(email)){ alert('已添加'); inp.value=''; return; }
+  S.subscribers.push(email); inp.value=''; renderSubs(); save();
+}
+function removeSub(email){ S.subscribers=S.subscribers.filter(e=>e!==email); renderSubs(); save(); }
+function renderSubs(){
+  document.getElementById('sub-list').innerHTML=S.subscribers.length
+    ?S.subscribers.map(e=>`<div class="subrow"><span>📧</span>${e}<button class="subrm" onclick="removeSub('${e}')">✕</button></div>`).join('')
+    :'<div style="font-family:var(--mono);font-size:10px;color:var(--text3);">暂无订阅者</div>';
+}
+
+async function genAndSend(){
+  if(!S.apiKey){ alert('请先填写 Anthropic API Key'); return; }
+  const btn=document.getElementById('send-btn');
+  btn.disabled=true; btn.textContent='⟳ 生成中…';
+  try{
+    const recent=S.speeches.slice(0,6);
+    const ctx=recent.length?recent.map(s=>`${s.title}\n摘要: ${s.excerpt}\n金句: "${s.quote||''}"`).join('\n\n'):'暂无最新讲话数据';
+    const content=await claude(
+      '你是专业投资研究助理，生成简洁有价值的每日邮件摘要。中文，纯文本。',
+      `生成每日追踪摘要邮件：
+追踪人物：${S.active}
+过去24小时讲话：
+${ctx}
+
+格式（用 === 分隔）：
+=== 今日摘要 ===
+3-5个要点
+
+=== 核心金句 ===
+最重要1-2句
+
+=== 产业链投资启示 ===
+2-3条（含股票代码）
+
+=== 风险提示 ===
+1-2条
+
+---
+此邮件由 Intelligence Feed 自动生成，仅供参考，不构成投资建议。`, false);
+
+    document.getElementById('prev-wrap').style.display='block';
+    document.getElementById('prev-ph').style.display='none';
+    document.getElementById('prev-content').textContent=content;
+
+    // send via EmailJS
+    if(S.ejsSid&&S.ejsTid&&S.ejsPk&&S.subscribers.length){
+      btn.textContent='⟳ 发送中…';
+      emailjs.init(S.ejsPk);
+      let sent=0;
+      for(const to of S.subscribers){
+        try{
+          await emailjs.send(S.ejsSid,S.ejsTid,{
+            to_email:to,
+            subject:`[Intelligence Feed] ${S.active} 今日动态 · ${new Date().toLocaleDateString('zh-CN')}`,
+            message:content
+          });
+          sent++;
+        }catch(e){ console.error('Failed',to,e); }
+      }
+      if(sent>0) alert(`✓ 已发送至 ${sent} 个邮箱`);
+      else alert('邮件发送失败，请检查 EmailJS 配置');
+    } else if(!S.ejsSid){
+      alert('邮件内容已生成，但尚未配置 EmailJS。前往「EmailJS 配置指南」完成设置。');
+    } else {
+      alert('邮件内容已生成，但暂无订阅者。');
+    }
+  }catch(e){ alert('失败: '+e.message); }
+  finally{ btn.disabled=false; btn.textContent='生成 + 发送'; }
+}
+
+function copyPreview(){
+  const c=document.getElementById('prev-content')?.textContent;
+  if(!c){ alert('请先生成邮件内容'); return; }
+  navigator.clipboard.writeText(c).then(()=>alert('✓ 已复制'));
+}
+
+// ════════════════════════
+// MODAL
+// ════════════════════════
+function openSp(id){
+  const s=S.speeches.find(x=>x.id===id); if(!s) return;
+  document.getElementById('minner').innerHTML=`
+    <div class="meye">${s.date||''} · ${s.source||''}</div>
+    <div class="mtit">${s.title||''}</div>
+    <div class="mdate"><span class="tag ${TMAP[s.type]||'ta'}">${(s.type||'').toUpperCase()}</span>${s.signal?`<span class="tag t${s.signal==='bullish'?'bull':s.signal==='bearish'?'bear':'neut'}" style="margin-left:5px;">${s.signal.toUpperCase()}</span>`:''}</div>
+    <div class="msec">内容详情</div>
+    <div class="mbody">${(s.fullText||s.excerpt||'').replace(/\n/g,'<br>')}</div>
+    ${s.quote?`<div class="msec">核心金句</div><div class="mquote">${s.quote}</div>`:''}
+    ${s.analysis?`<div class="msec">投资意义</div><div class="mbody">${s.analysis}</div>`:''}
+    ${s.link?`<div style="margin-top:12px;"><a href="${s.link}" target="_blank" style="font-family:var(--mono);font-size:9px;color:var(--blue);">↗ 原文链接</a></div>`:''}`;
+  document.getElementById('mbg').classList.add('open');
+}
+function closeM(){ document.getElementById('mbg').classList.remove('open'); }
+
+// ════════════════════════
+// NAV
+// ════════════════════════
+const PTITLES={speeches:'公开讲话原文',summary:'核心观点总结',forecast:'5–10年产业预测',stocks:'股票追踪',alerts:'交易提醒',email:'邮件订阅设置',setup:'EmailJS 配置指南'};
+function gp(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.getElementById('page-'+id).classList.add('on');
+  document.querySelectorAll('.nitem').forEach(n=>n.classList.remove('on'));
+  if(el) el.classList.add('on');
+  document.getElementById('tbtxt').innerHTML=`<span>▸</span> ${PTITLES[id]||id}`;
+  if(id==='stocks') renderSt(S.stFilter);
+  if(id==='summary'&&S.summary) renderSum();
+  if(id==='forecast'&&S.forecast) renderFc();
+  if(id==='alerts') renderAl();
+  if(id==='email') renderSubs();
+}
+function fpSp(el,t){ document.querySelectorAll('#sp-pills .pill').forEach(p=>p.classList.remove('on')); el.classList.add('on'); S.spFilter=t; renderSp(); }
+function fpSt(el,t){ document.querySelectorAll('#page-stocks .pill').forEach(p=>p.classList.remove('on')); el.classList.add('on'); S.stFilter=t; renderSt(t); }
+
+// ════════════════════════
+// AUTO SCHEDULE
+// ════════════════════════
+function checkAuto(){
+  if(!S.apiKey) return;
+  const now=new Date(), h=now.getHours(), day=now.getDay();
+  // Monday 07:00 fetch
+  if(day===1&&h>=7){
+    const last=S.lastFetch?new Date(S.lastFetch):null;
+    if(!last||(now-last)>6*24*3600*1000) startFetch();
+  }
+  // Daily 07:00 email
+  if(h===7&&S.ejsSid&&S.subscribers.length){
+    const lk='ift2_last_email', le=localStorage.getItem(lk);
+    if(!le||(now-new Date(le))>23*3600*1000){
+      genAndSend();
+      localStorage.setItem(lk,now.toISOString());
+    }
+  }
+}
+
+// ════════════════════════
+// INIT
+// ════════════════════════
+load(); renderPpl(); renderSp(); renderSt('all'); renderSubs();
+if(S.summary) renderSum();
+if(S.forecast) renderFc();
+if(S.alerts.length){ document.getElementById('b-al').textContent=S.alerts.length; renderAl(); }
+if(S.speeches.length) document.getElementById('b-sp').textContent=S.speeches.length;
+setInterval(checkAuto, 60000);
+checkAuto();
+</script>
+</body>
+</html>
